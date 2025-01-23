@@ -1,0 +1,5 @@
+# Normalize text files to LF on commit, but check out as CRLF on Windows
+* text=auto
+
+# Jupyter notebooks should always use LF
+*.ipynb text eol=lf

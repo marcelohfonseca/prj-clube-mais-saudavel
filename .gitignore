@@ -4,3 +4,6 @@
 strava_token.json
 
 */__pycache__
+
+user_data/*
+!user_data/.gitkeep

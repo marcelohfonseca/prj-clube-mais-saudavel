@@ -1,9 +1,14 @@
+# Variáveis de ambiente
 .venv
 .env
 
+# Arquivos de configuração
 strava_token.json
 
+# Arquivos de log
+scraping.log
 */__pycache__
 
+# Arquivos da sessão do scraping
 user_data/*
 !user_data/.gitkeep

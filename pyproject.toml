@@ -16,6 +16,7 @@ dependencies = [
 dev = [
     "black>=25.1.0",
     "ipykernel>=6.29.5",
+    "python-dotenv>=1.0.1",
 ]
 
 [tool.black]

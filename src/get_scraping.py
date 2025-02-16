@@ -11,15 +11,15 @@ from src.get_utils import get_msg_log, get_week, parse_datetime, parse_time
 
 
 logging.basicConfig(
-    filename="scraping.log",
+    filename='scraping.log',
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    format='%(asctime)s - %(levelname)s - %(message)s',
 )
 logger = logging.getLogger(__name__)
 
 
 class StravaScraper:
-    URL = "https://www.strava.com"
+    URL = 'https://www.strava.com'
 
     def __init__(self, email, password):
         self.email = email
@@ -28,18 +28,18 @@ class StravaScraper:
     def start_browser(
         self,
         headless=False,
-        session_file: str = "user_data",
-        view_port: dict = {"width": 1920, "height": 1080},
+        session_file: str = 'user_data',
+        view_port: dict = {'width': 1920, 'height': 1080},
     ):
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch_persistent_context(
             user_data_dir=session_file,
             headless=headless,
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         )
         self.page = self.browser.new_page()
         self.page.set_viewport_size(view_port)
-        logger.info(get_msg_log("start", "info", self.email))
+        logger.info(get_msg_log('start', 'info', self.email))
 
     def close_browser(self):
         if self.browser:
@@ -54,8 +54,8 @@ class StravaScraper:
             return False
 
     def login_if_needed(self):
-        logger.info(get_msg_log("login", "info", self.email))
-        if self.page.url.startswith(self.URL + "/login"):
+        logger.info(get_msg_log('login', 'info', self.email))
+        if self.page.url.startswith(self.URL + '/login'):
             self.page.locator('//*[@id="desktop-email"]').click()
             self.page.locator('//*[@id="desktop-email"]').fill(self.email)
             self.page.locator('//*[@id="desktop-login-button"]').click()
@@ -74,24 +74,24 @@ class StravaScraper:
         self.login_if_needed()
 
         try:
-            atletas = self.page.query_selector_all("ul.list-athletes li")
+            atletas = self.page.query_selector_all('ul.list-athletes li')
             data = []
 
             for atleta in atletas:
-                nome = atleta.query_selector(".text-headline a").inner_text()
-                link = atleta.query_selector(".text-headline a").get_attribute("href")
+                nome = atleta.query_selector('.text-headline a').inner_text()
+                link = atleta.query_selector('.text-headline a').get_attribute('href')
                 athlete_id = link.split("/")[-1]
                 data.append(
                     {
-                        "athlete_id": athlete_id,
-                        "athlete_name": nome,
-                        "link": self.URL + link,
-                        "updated_at": datetime.now(),
+                        'athlete_id': athlete_id,
+                        'athlete_name': nome,
+                        'link': self.URL + link,
+                        'updated_at': datetime.now(),
                     }
                 )
-            logger.info(get_msg_log("members", "info", club_id))
+            logger.info(get_msg_log('members', 'info', club_id))
         except Exception as e:
-            logger.error(get_msg_log("members", "error", club_id))
+            logger.error(get_msg_log('members', 'error', club_id))
             return pd.DataFrame
         return pd.DataFrame(data)
 
@@ -101,9 +101,9 @@ class StravaScraper:
 
         try:
             for week in week_list:
-                base_url = f"{self.URL}/athletes/{athlete_id}#interval?"
+                base_url = f'{self.URL}/athletes/{athlete_id}#interval?'
                 params = (
-                    f"interval={week}&interval_type=week&chart_type=miles&year_offset=0"
+                    f'interval={week}&interval_type=week&chart_type=miles&year_offset=0'
                 )
 
                 self.page.goto(base_url + params)
@@ -114,41 +114,41 @@ class StravaScraper:
                 )
 
                 for el in elementos:
-                    href = el.get_attribute("href")
-                    match = re.search(r"/activities/(\d+)", href)
+                    href = el.get_attribute('href')
+                    match = re.search(r'/activities/(\d+)', href)
                     if match:
                         atividades.append(match.group(1))
 
-            logger.info(get_msg_log("activities", "info", athlete_id))
-            return dict({"athlete_id": athlete_id, "activities": atividades})
+            logger.info(get_msg_log('activities', 'info', athlete_id))
+            return dict({'athlete_id': athlete_id, 'activities': atividades})
         except Exception as e:
-            logger.error(get_msg_log("activities", "error", athlete_id))
-            return dict({"athlete_id": athlete_id, "activities": []})
+            logger.error(get_msg_log('activities', 'error', athlete_id))
+            return dict({'athlete_id': athlete_id, 'activities': []})
 
     def activity_data(self, athlete_id: int, activity_id: int):
-        self.page.goto(f"{self.URL}/activities/{activity_id}")
+        self.page.goto(f'{self.URL}/activities/{activity_id}')
         sleep(3)
 
-        logger.info(get_msg_log("activity", "info", f"{athlete_id}: {activity_id}"))
+        logger.info(get_msg_log('activity', 'info', f'{athlete_id}: {activity_id}'))
 
         data = {
-            "athlete_id": athlete_id,
-            "activity_id": activity_id,
-            "athlete_name": "Unnamed",
-            "activity_type": "Unnamed",
-            "time": None,
-            "location": "Unnamed",
-            "activity_name": "Unnamed",
-            "moving_time": np.nan,
-            "elapsed_time": np.nan,
-            "duration": np.nan,
-            "calories": np.nan,
-            "distance": np.nan,
-            "pace": np.nan,
-            "elevation": np.nan,
-            "link": f"{self.URL}/activities/{activity_id}",
-            "updated_at": datetime.now(),
-            "week": datetime.today().isocalendar()[1],
+            'athlete_id': athlete_id,
+            'activity_id': activity_id,
+            'athlete_name': 'Unnamed',
+            'activity_type': 'Unnamed',
+            'time': None,
+            'location': 'Unnamed',
+            'activity_name': 'Unnamed',
+            'moving_time': np.nan,
+            'elapsed_time': np.nan,
+            'duration': np.nan,
+            'calories': np.nan,
+            'distance': np.nan,
+            'pace': np.nan,
+            'elevation': np.nan,
+            'link': f'{self.URL}/activities/{activity_id}',
+            'updated_at': datetime.now(),
+            'week': datetime.today().isocalendar()[1],
         }
 
         # nome do atleta
@@ -156,12 +156,12 @@ class StravaScraper:
             element = '//span[@class="title"]/a[@class="minimal"]'
             if self.element_exists(element):
                 content = self.page.locator(element).first.text_content()
-                data["athlete_name"] = content.strip() if content else "Unnamed"
+                data['athlete_name'] = content.strip() if content else 'Unnamed'
             else:
-                data["athlete_name"] = "Not Found"
+                data['athlete_name'] = 'Not Found'
         except Exception as e:
             logger.error(
-                get_msg_log("activity", "error", f"{athlete_id}: {activity_id} - {e}")
+                get_msg_log('activity', 'error', f'{athlete_id}: {activity_id} - {e}')
             )
 
         # tipo de atividade
@@ -171,18 +171,18 @@ class StravaScraper:
                 content = self.page.locator(element).text_content().strip()
 
                 if content:
-                    content = content.replace("–", "-").replace("—", "-")
-                    parts = content.split("-")
-                    data["activity_type"] = (
-                        parts[-1].strip() if len(parts) > 1 else "Unnamed"
+                    content = content.replace('–', '-').replace('—', '-')
+                    parts = content.split('-')
+                    data['activity_type'] = (
+                        parts[-1].strip() if len(parts) > 1 else 'Unnamed'
                     )
                 else:
-                    data["activity_type"] = "Unnamed"
+                    data['activity_type'] = 'Unnamed'
             else:
-                data["activity_type"] = "Not Found"
+                data['activity_type'] = 'Not Found'
         except Exception as e:
             logger.error(
-                get_msg_log("activity", "error", f"{athlete_id}: {activity_id} - {e}")
+                get_msg_log('activity', 'error', f'{athlete_id}: {activity_id} - {e}')
             )
 
         # data e hora da atividade
@@ -190,10 +190,10 @@ class StravaScraper:
             element = '//div[@class="details"]/time'
             if self.element_exists(element):
                 content = self.page.locator(element).text_content()
-                data["time"] = parse_datetime(content) if content else np.nan
+                data['time'] = parse_datetime(content) if content else np.nan
         except Exception as e:
             logger.error(
-                get_msg_log("activity", "error", f"{athlete_id}: {activity_id} - {e}")
+                get_msg_log('activity', 'error', f'{athlete_id}: {activity_id} - {e}')
             )
 
         # nome da atividade
@@ -201,12 +201,12 @@ class StravaScraper:
             element = '//div[@class="details"]/h1[@class="text-title1 marginless activity-name"]'
             if self.element_exists(element):
                 content = self.page.locator(element).text_content().strip()
-                data["activity_name"] = content if content else "Unnamed"
+                data['activity_name'] = content if content else 'Unnamed'
             else:
-                data["activity_name"] = "Not Found"
+                data['activity_name'] = 'Not Found'
         except Exception as e:
             logger.error(
-                get_msg_log("activity", "error", f"{athlete_id}: {activity_id} - {e}")
+                get_msg_log('activity', 'error', f'{athlete_id}: {activity_id} - {e}')
             )
 
         # localização da atividade
@@ -214,12 +214,12 @@ class StravaScraper:
             element = '//div[@class="details"]/span[@class="location"]'
             if self.element_exists(element):
                 content = self.page.locator(element).text_content().strip()
-                data["location"] = content if content else "Unnamed"
+                data['location'] = content if content else 'Unnamed'
             else:
-                data["location"] = "Not Found"
+                data['location'] = 'Not Found'
         except Exception as e:
             logger.error(
-                get_msg_log("activity", "error", f"{athlete_id}: {activity_id} - {e}")
+                get_msg_log('activity', 'error', f'{athlete_id}: {activity_id} - {e}')
             )
 
         # tempo de movimento
@@ -227,17 +227,17 @@ class StravaScraper:
             element = '//ul[@class="inline-stats section"]//li//strong'
             if self.element_exists(element):
                 content = self.page.locator(element).nth(1).text_content().strip()
-                data["moving_time"] = parse_time(content) if content else np.nan
+                data['moving_time'] = parse_time(content) if content else np.nan
             else:
-                data["moving_time"] = np.nan
+                data['moving_time'] = np.nan
         except Exception as e:
             logger.error(
-                get_msg_log("activity", "error", f"{athlete_id}: {activity_id} - {e}")
+                get_msg_log('activity', 'error', f'{athlete_id}: {activity_id} - {e}')
             )
 
         # distância, pace e elevação (se for corrida ou caminhada)
         # https://support.strava.com/hc/en-us/articles/216919407-Supported-Sport-Types-on-Strava
-        if data["activity_type"].lower() in [
+        if data['activity_type'].lower() in [
             'walk',
             'run',
             'long run',
@@ -257,15 +257,15 @@ class StravaScraper:
                 element = '//*[@id="heading"]/div/div/div[2]/ul/li[div[text()="Distance"]]/strong'
                 if self.element_exists(element):
                     content = self.page.locator(element).nth(0).text_content().strip()
-                    data["distance"] = (
-                        re.sub(r" km", "", content) if content else np.nan
+                    data['distance'] = (
+                        re.sub(r' km', '', content) if content else np.nan
                     )
                 else:
-                    data["distance"] = np.nan
+                    data['distance'] = np.nan
             except Exception as e:
                 logger.error(
                     get_msg_log(
-                        "activity", "error", f"{athlete_id}: {activity_id} - {e}"
+                        'activity', 'error', f'{athlete_id}: {activity_id} - {e}'
                     )
                 )
 
@@ -284,17 +284,17 @@ class StravaScraper:
                 if self.element_exists(element):
                     content = self.page.locator(element).text_content().strip()
                     if content:
-                        elevation = re.sub(r"[^\d]", "", content)
+                        elevation = re.sub(r'[^\d]', '', content)
                         break
                 else:
                     elevation = np.nan
-            data["elevation"] = elevation if elevation else np.nan
+            data['elevation'] = elevation if elevation else np.nan
         except Exception as e:
             logger.error(
-                get_msg_log("activity", "error", f"{athlete_id}: {activity_id} - {e}")
+                get_msg_log('activity', 'error', f'{athlete_id}: {activity_id} - {e}')
             )
 
-        if data["activity_type"].lower() in [
+        if data['activity_type'].lower() in [
             'walk',
             'run',
             'long run',
@@ -307,17 +307,17 @@ class StravaScraper:
                 element = '//ul[@class="inline-stats section"]//li//strong'
                 if self.element_exists(element):
                     content = self.page.locator(element).nth(2).text_content().strip()
-                    data["pace"] = (
-                        re.match(r"(\d{1,2}:\d{2})", content).group(1)
+                    data['pace'] = (
+                        re.match(r'(\d{1,2}:\d{2})', content).group(1)
                         if content
                         else np.nan
                     )
                 else:
-                    data["pace"] = np.nan
+                    data['pace'] = np.nan
             except Exception as e:
                 logger.error(
                     get_msg_log(
-                        "activity", "error", f"{athlete_id}: {activity_id} - {e}"
+                        'activity', 'error', f'{athlete_id}: {activity_id} - {e}'
                     )
                 )
 
@@ -341,10 +341,10 @@ class StravaScraper:
                         break
                 else:
                     elapsed_time = np.nan
-            data["elapsed_time"] = elapsed_time if elapsed_time else np.nan
+            data['elapsed_time'] = elapsed_time if elapsed_time else np.nan
         except Exception as e:
             logger.error(
-                get_msg_log("activity", "error", f"{athlete_id}: {activity_id} - {e}")
+                get_msg_log('activity', 'error', f'{athlete_id}: {activity_id} - {e}')
             )
 
         # duração da atividade (não está disponível para todas as atividades)
@@ -352,12 +352,12 @@ class StravaScraper:
             element = '//*[@id="heading"]/div/div/div[2]/ul/li/strong'
             if self.element_exists(element):
                 content = self.page.locator(element).text_content().strip()
-                data["duration"] = parse_time(content) if content else np.nan
+                data['duration'] = parse_time(content) if content else np.nan
             else:
-                data["duration"] = np.nan
+                data['duration'] = np.nan
         except Exception as e:
             logger.error(
-                get_msg_log("activity", "error", f"{athlete_id}: {activity_id} - {e}")
+                get_msg_log('activity', 'error', f'{athlete_id}: {activity_id} - {e}')
             )
 
         # calorias
@@ -380,10 +380,10 @@ class StravaScraper:
                         break
                 else:
                     calories = np.nan
-            data["calories"] = calories if calories else np.nan
+            data['calories'] = calories if calories else np.nan
         except Exception as e:
             logger.error(
-                get_msg_log("activity", "error", f"{athlete_id}: {activity_id} - {e}")
+                get_msg_log('activity', 'error', f'{athlete_id}: {activity_id} - {e}')
             )
 
         return pd.DataFrame([data])

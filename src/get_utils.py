@@ -13,30 +13,30 @@ def get_msg_log(step: str, msg_type: str, athlete: int, activity: str = None) ->
     Returns:
         str: Mensagem de log
     """
-    activity = f"[{activity}]" if activity else ""
+    activity = f'[{activity}]' if activity else ''
     messages = {
-        "start": {
-            "info": "Iniciando o scraping...",
-            "error": "Erro ao iniciar o scraping.",
+        'start': {
+            'info': 'Iniciando o scraping...',
+            'error': 'Erro ao iniciar o scraping.',
         },
-        "login": {
-            "info": "Realizando login...",
-            "error": "Erro ao realizar login.",
+        'login': {
+            'info': 'Realizando login...',
+            'error': 'Erro ao realizar login.',
         },
-        "members": {
-            "info": "Coletando membros do clube...",
-            "error": "Erro ao coletar membros do clube.",
+        'members': {
+            'info': 'Coletando membros do clube...',
+            'error': 'Erro ao coletar membros do clube.',
         },
-        "activities": {
-            "info": "Coletando atividades...",
-            "error": "Erro ao coletar atividades.",
+        'activities': {
+            'info': 'Coletando atividades...',
+            'error': 'Erro ao coletar atividades.',
         },
-        "activity": {
-            "info": "Coletando dados da atividade...",
-            "error": "Erro ao coletar dados da atividade.",
+        'activity': {
+            'info': 'Coletando dados da atividade...',
+            'error': 'Erro ao coletar dados da atividade.',
         },
     }
-    message = f"{athlete}: {activity} " + messages[step][msg_type]
+    message = f'{athlete}: {activity} ' + messages[step][msg_type]
     return message
 
 

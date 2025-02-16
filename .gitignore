@@ -12,3 +12,7 @@ scraping.log
 # Arquivos da sessão do scraping
 user_data/*
 !user_data/.gitkeep
+
+# Arquivos de dados
+data/*
+!data/.gitkeep

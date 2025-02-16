@@ -1,194 +1,302 @@
 from playwright.sync_api import sync_playwright
 from time import sleep
-from datetime import datetime
+
+from get_utils import get_week, get_msg_log, parse_time, parse_datetime
 
 import re
 import pandas as pd
-
-EMAIL = 'fonmarcelo@gmail.com'
-PASSWORD = 'p[>Yzk@V91ZL2+vcbiXX'
-SESSION_FILE = 'state.json'
-
-columns = [
-    'athlete_id', 'athlete_name', 'activity_id', 'activity_type', 'time', 'location', 'activity_name', 'moving_time', 'distance', 'pace'
-]
-activities_df = pd.DataFrame()
+import numpy as np
+import logging
 
 
-def format_time(time_str):
-    # Verifica se o formato tem ":", separando por ":", que deve gerar uma lista de [horas, minutos, segundos]
-    time_parts = time_str.split(":")
-
-    if len(time_parts) == 2:  # Caso de "MM:SS"
-        hours = 0
-        minutes = int(time_parts[0])
-        seconds = int(time_parts[1])
-    elif len(time_parts) == 3:  # Caso de "HH:MM:SS"
-        hours = int(time_parts[0])
-        minutes = int(time_parts[1])
-        seconds = int(time_parts[2])
-    else:
-        raise ValueError("Formato de tempo inválido")
-
-    return f"{hours:02}:{minutes:02}:{seconds:02}"
+logging.basicConfig(
+    filename="scraping.log",  # Nome do arquivo de log
+    level=logging.INFO,  # Define o nível mínimo de log
+    format="%(asctime)s - %(levelname)s - %(message)s",  # Formato da mensagem
+)
+logger = logging.getLogger(__name__)  # Cria um logger específico para este módulo
 
 
-def login_if_needed(page):
-    """Faz login apenas se necessário."""
-    if page.url.startswith("https://www.strava.com/login"):
-        print("Realizando login...")
-        page.locator('//*[@id="desktop-email"]').click()
-        page.locator('//*[@id="desktop-email"]').fill(EMAIL)
-        page.locator('//*[@id="desktop-login-button"]').click()
-        sleep(2)
+class StravaScraper:
+    URL = "https://www.strava.com"
 
-        page.locator(
-            '//*[@id="__next"]/div/div[2]/div[2]/div/div/form/div[1]/div[2]/div/input'
-        ).click()
-        page.locator(
-            '//*[@id="__next"]/div/div[2]/div[2]/div/div/form/div[1]/div[2]/div/input'
-        ).fill(PASSWORD)
-        page.locator(
-            '//*[@id="__next"]/div/div[2]/div[2]/div/div/form/div[2]/button'
-        ).click()
+    def __init__(self, email, password):
+        self.email = email
+        self.password = password
 
-        sleep(5)
-        print("Login realizado com sucesso!")
-
-
-def scrape_activity(url):
-    activity_df = pd.DataFrame(columns=columns)
-    with sync_playwright() as p:
-        context = p.chromium.launch_persistent_context(
-            user_data_dir='user_data', 
-            headless=False, 
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    def start_browser(
+        self,
+        headless=False,
+        session_file: str = "user_data",
+        view_port: dict = {"width": 1920, "height": 1080},
+    ):
+        self.playwright = sync_playwright().start()
+        self.browser = self.playwright.chromium.launch_persistent_context(
+            user_data_dir=session_file,
+            headless=headless,
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         )
-        page = context.new_page()
-        page.set_viewport_size({"width": 1980, "height": 1080})
+        self.page = self.browser.new_page()
+        self.page.set_viewport_size(view_port)
 
-        page.goto(url + "/members")
-        login_if_needed(page)
+    def close_browser(self):
+        if self.browser:
+            self.browser.close()
+        if self.playwright:
+            self.playwright.stop()
 
-        sleep(3)
+    def element_exists(self, element: str, timeout: int = 3000) -> bool:
+        try:
+            return self.page.locator(element).first.is_visible(timeout=timeout)
+        except Exception:
+            return False
 
-        athlete_id = "3580656"
-        page.goto(
-            "https://www.strava.com/athletes/3580656#interval?interval=202506&interval_type=week&chart_type=miles&year_offset=0"
-        )
-        sleep(3)
+    def login_if_needed(self):
+        logger.info(get_msg_log("login", "info", self.email))
+        if self.page.url.startswith(self.URL + "/login"):
+            self.page.locator('//*[@id="desktop-email"]').click()
+            self.page.locator('//*[@id="desktop-email"]').fill(self.email)
+            self.page.locator('//*[@id="desktop-login-button"]').click()
+            sleep(2)
 
-        # Coleta todos os links de atividades
-        elementos = page.locator(
-            '//*[@id="main"]/div//a[contains(@href, "/activities/")]'
-        )
+            self.page.locator(
+                '//*[@id="__next"]/div/div[2]/div[2]/div/div/form/div[1]/div[2]/div/input'
+            ).fill(self.password)
 
-        # Extrai os códigos das atividades
+            self.page.locator(
+                '//*[@id="__next"]/div/div[2]/div[2]/div/div/form/div[2]/button'
+            ).click()
+            print("Login realizado com sucesso!")
+
+    def get_club_members(self, club_url: str):
+        self.page.goto(club_url + "/members")
+        self.login_if_needed()
+
+        atletas = self.page.query_selector_all("ul.list-athletes li")
+        data = []
+
+        for atleta in atletas:
+            nome = atleta.query_selector(".text-headline a").inner_text()
+            link = atleta.query_selector(".text-headline a").get_attribute("href")
+            athlete_id = link.split("/")[-1]
+            data.append(
+                {
+                    "athlete_id": athlete_id,
+                    "athlete_name": nome,
+                    "link": self.URL + link,
+                }
+            )
+        return pd.DataFrame(data)
+
+    def get_athlete_activities(self, athlete_id: int, weeks: int = 1):
+        week_list = get_week(weeks)
         atividades = []
-        for el in elementos.all():
-            href = el.get_attribute("href")
-            match = re.search(r"/activities/(\d+)", href)
-            if match:
-                atividades.append(match.group(1))
 
-        print("Códigos das atividades:", atividades)
+        for week in week_list:
+            base_url = f"{self.URL}/athletes/{athlete_id}#interval?"
+            params = f"interval={week}&interval_type=week&chart_type=miles&year_offset=0"
 
-        activity_id = '13583503049'
-        page.goto("https://www.strava.com/activities/13583503049")
+            self.page.goto(base_url + params)
+            sleep(3)
+
+            elementos = self.page.query_selector_all(
+                '//a[@data-testid="activity_name"]'
+            )
+
+            for el in elementos:
+                href = el.get_attribute("href")
+                match = re.search(r"/activities/(\d+)", href)
+                if match:
+                    atividades.append(match.group(1))
+        return dict({"athlete_id": athlete_id, "activities": atividades})
+
+    def activity_data(self, athlete_id: int, activity_id: int):
+        self.page.goto(f"{self.URL}/activities/{activity_id}")
         sleep(3)
 
         data = {
-            'athlete_id': athlete_id,
-            'activity_id': activity_id,
-            'athlete_name': None,
-            'activity_type': None,
-            'time': None,
-            'location': None,
-            'activity_name': None,
-            'moving_time': None,
-            'elapsed_time': None,
-            'calories': None,
-            'distance': None,
-            'pace': None,
-            'elevation': None,
+            "athlete_id": athlete_id,
+            "activity_id": activity_id,
+            "athlete_name": None,
+            "activity_type": None,
+            "time": None,
+            "location": None,
+            "activity_name": None,
+            "moving_time": None,
+            "elapsed_time": None,
+            "duration": None,
+            "calories": None,
+            "distance": None,
+            "pace": None,
+            "elevation": None,
         }
 
-        # Coleta nome do atleta e tipo de atividade
+        # nome do atleta
         try:
-            data["athlete_name"] = page.locator(
-                '//span[@class="title"]/a[@class="minimal"]'
-            ).text_content()
-
-            data["activity_type"] = (
-                page.locator('//span[@class="title"]')
-                .first.text_content()
-                .split("–")[-1]
-                .strip()
-            )
+            element = '//span[@class="title"]/a[@class="minimal"]'
+            if self.element_exists(element):
+                content = self.page.locator(element).first
+                data["athlete_name"] = (
+                    content.text_content().strip()
+                    if content.text_content()
+                    else "Unnamed"
+                )
+            else:
+                data["athlete_name"] = "Not Found"
         except Exception as e:
-            print("Erro ao coletar os dados de atleta e tipo de atividade:", e)
+            pass
 
-        # Coleta detalhes da atividade
+        # tipo de atividade
         try:
-            activity_time = page.locator('//div[@class="details"]/time').text_content()
-            data["time"] = datetime.strptime(
-                activity_time.strip(), "%I:%M %p on %A, %B %d, %Y"
-            )
+            element = '//span[@class="title"]'
+            if self.page.locator(element).count() > 0:
+                self.page.wait_for_selector(element, timeout=3000)
+                content = self.page.locator(element).first
+                data["activity_type"] = content.text_content()
+            else:
+                data["activity_type"] = "Not Found"
+        except Exception as e:
+            pass
 
-            data["location"] = page.locator(
-                '//div[@class="details"]/span[@class="location"]'
+        # data e hora da atividade
+        try:
+            activity_time = self.page.locator(
+                '//div[@class="details"]/time'
             ).text_content()
-            data["activity_name"] = page.locator(
+            data["time"] = parse_datetime(activity_time)
+        except Exception as e:
+            print("Erro ao coletar a data e hora da atividade:", e)
+
+        # nome da atividade
+        try:
+            data["activity_name"] = self.page.locator(
                 '//div[@class="details"]/h1[@class="text-title1 marginless activity-name"]'
             ).text_content()
         except Exception as e:
-            print("Erro ao coletar os detalhes da atividade:", e)
+            print("Erro ao coletar o nome da atividade:", e)
 
-        # Coleta tempo de movimento
+        # localização da atividade
         try:
-            element = '//ul[@class="inline-stats section"]//li//strong'
-            moving_time_str = page.locator(element).nth(1).text_content()
-            data["moving_time"] = format_time(moving_time_str)
-
-            if data["activity_type"].lower() == "run":
-                distance_str = page.locator(element).nth(0).text_content()
-                data["distance"] = re.sub(r" km", "", distance_str).strip()
-
-                pace_str = page.locator(element).nth(2).text_content()
-                data["pace"] = re.match(r"(\d{1,2}:\d{2})", pace_str).group(1)
+            element = '//div[@class="details"]/span[@class="location"]'
+            if self.page.locator(element).count() > 0:
+                self.page.wait_for_selector(element, timeout=3000)
+                content = self.page.locator(element).first
+                data["location"] = content.text_content()
+            else:
+                data["location"] = "Not Found"
         except Exception as e:
-            print("Erro ao coletar os detalhes de tempo da atividade:", e)
+            print("Erro ao coletar a localização da atividade:", e)
+            data["location"] = "Erro"
 
+        # tempo de movimento
         try:
-            elapsed_time_str = page.locator(
-                '//div[contains(@class, "section more-stats")]//span[@data-glossary-term="definition-elapsed-time"]/parent::div/following-sibling::div//strong'
-            ).text_content()
-            data["elapsed_time"] = format_time(elapsed_time_str)
+            moving_time_str = (
+                self.page.locator('//ul[@class="inline-stats section"]//li//strong')
+                .nth(1)
+                .text_content()
+            )
+            data["moving_time"] = parse_time(moving_time_str)
+        except Exception as e:
+            print("Erro ao coletar tempo de movimento:", e)
 
-            data["calories"] = page.locator(
-                '//div[contains(@class, "section more-stats")]//div[contains(text(), "Calories")]/following-sibling::div//strong'
-            ).text_content()
+        # distância, pace e elevação (se for corrida ou caminhada)
+        if data["activity_type"].lower() in [
+            "run",
+            "long run",
+            "walk",
+            "workout",
+            "treadmill workout",
+        ]:
+            try:
+                distance_str = (
+                    self.page.locator('//ul[@class="inline-stats section"]//li//strong')
+                    .nth(0)
+                    .text_content()
+                )
+                data["distance"] = re.sub(r" km", "", distance_str).strip()
+            except Exception as e:
+                print("Erro ao coletar a distância:", e)
 
-            if data["activity_type"].lower() == "run":
+            try:
+                pace_str = (
+                    self.page.locator('//ul[@class="inline-stats section"]//li//strong')
+                    .nth(2)
+                    .text_content()
+                )
+                data["pace"] = re.match(r"(\d{1,2}:\d{2})", pace_str).group(1)
+            except Exception as e:
+                print("Erro ao coletar o ritmo:", e)
+
+            try:
                 elevation_str = (
-                    page.locator(
+                    self.page.locator(
                         '//div[contains(@class, "section more-stats")]//div[contains(text(), "Elevation")]/following-sibling::div//strong[abbr[@class="unit" and @title="meters"]]'
                     )
                     .text_content()
                     .strip()
                 )
                 data["elevation"] = re.sub(r" m", "", elevation_str).strip()
+            except Exception as e:
+                print("Erro ao coletar a elevação:", e)
+
+        # tempo decorrido
+        try:
+            elapsed_time_str = self.page.locator(
+                '//div[contains(@class, "section more-stats")]//span[@data-glossary-term="definition-elapsed-time"]/parent::div/following-sibling::div//strong'
+            ).text_content()
+            data["elapsed_time"] = parse_time(elapsed_time_str)
         except Exception as e:
-            print("Erro ao coletar Elapsed Time e Calories:", e)
+            print("Erro ao coletar o tempo decorrido:", e)
 
-        activity_df = pd.DataFrame([data])
+        # calorias
+        try:
+            data["calories"] = self.page.locator(
+                '//div[contains(@class, "section more-stats")]//div[contains(text(), "Calories")]/following-sibling::div//strong'
+            ).text_content()
+        except Exception as e:
+            print("Erro ao coletar as calorias:", e)
 
-        print('Dados:')
-        print(activity_df.head())  # Verifica se os dados foram coletados corretamente
-        context.close()
+        # duração da atividade (não está disponível para todas as atividades)
+        try:
+            duration_str = self.page.locator('//*[@id="heading"]/div/div/div[2]').text_content().strip()
+            data["duration"] = parse_time(duration_str)
+        except Exception as e:
+            print("Erro ao coletar a duração:", e)
 
-        return activity_df  # Retorna o DataFrame
+        return pd.DataFrame([data])
 
-url = "https://www.strava.com/clubs/1337810"
-# url = "https://www.strava.com/clubs/1337810/recent_activity"
-dados = scrape_activity(url)
+
+if __name__ == "__main__":
+    EMAIL = "fonmarcelo@gmail.com"
+    PASSWORD = "p[>Yzk@V91ZL2+vcbiXX"
+    CLUB_URL = "https://www.strava.com/clubs/1337810"
+
+    scraper = StravaScraper(EMAIL, PASSWORD)
+    scraper.start_browser()
+
+    try:
+        atv = scraper.activity_data(3580656, 13633978177)
+        print(atv)
+    finally:
+        scraper.close_browser()
+
+    '''try:
+        members_df = scraper.get_club_members(CLUB_URL)
+        members_df.to_parquet("data/members.parquet")
+
+        if not members_df.empty:
+            all_activities = pd.DataFrame()
+
+            for _, row in members_df.iterrows():  # Itera sobre todos os atletas
+                athlete_id = row["athlete_id"]
+                activities = scraper.get_athlete_activities(athlete_id, weeks=7)
+                print(f"Atividades do atleta {athlete_id}: {activities}")
+
+                for activity_id in activities["activities"]:
+                    activity_data = scraper.activity_data(athlete_id, activity_id)
+                    all_activities = pd.concat([all_activities, activity_data])
+
+            print(all_activities)
+            all_activities.to_parquet("data/activities.parquet")
+    finally:
+        scraper.close_browser()'''

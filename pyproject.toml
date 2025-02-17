@@ -1,7 +1,7 @@
 [project]
 name = "prj-clube-mais-saudavel"
 version = "0.2.0"
-description = "Add your description here"
+description = "Projeto +Saudável com o objetivo de promover a saúde e bem-estar dos participantes incluindo a prática de atividades físicas em uma disputa saudável."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

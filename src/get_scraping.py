@@ -126,7 +126,7 @@ class StravaScraper:
             return dict({'athlete_id': athlete_id, 'activities': []})
 
     def activity_data(self, athlete_id: int, activity_id: int):
-        self.page.goto(f'{self.URL}/activities/{activity_id}')
+        self.page.goto(f'{self.URL}/activities/{activity_id}/overview')
         sleep(3)
 
         logger.info(get_msg_log('activity', 'info', f'{athlete_id}: {activity_id}'))
@@ -148,7 +148,6 @@ class StravaScraper:
             'elevation': np.nan,
             'link': f'{self.URL}/activities/{activity_id}',
             'updated_at': datetime.now(),
-            'week': datetime.today().isocalendar()[1],
         }
 
         # nome do atleta

@@ -39,7 +39,7 @@ try:
                 activity_df = scraper.activity_df(athlete_id, activity_id)
                 all_activity_df = pd.concat([all_activity_df, activity_df])
 
-        all_activity_df['week'] = all_activity_df['time'].dt.isocalendar().week
+        all_activity_df['week'] = all_activity_df['time'].dt.strftime('%Y%U')
 
         for week in tqdm(
             all_activity_df['week'].unique(), desc='Salvando arquivos semanais'

@@ -1,4 +1,7 @@
+import glob
 from datetime import datetime, timedelta
+
+import pandas as pd
 
 
 def get_msg_log(step: str, msg_type: str, athlete: int, activity: str = None) -> str:
@@ -115,3 +118,28 @@ def parse_datetime(activity_time: str) -> datetime:
         except ValueError:
             pass
     raise ValueError(f"Formato desconhecido: {activity_time}")
+
+
+def import_all_data(
+    folder: str = 'data/', name_files: str = 'activity_*.parquet'
+) -> pd.DataFrame:
+    """Função que faz a importação de todos os arquivos parquet de uma pasta
+
+    Args:
+        folder (str, optional): Nome da pasta onde estão os arquivos. Padrão é 'data/'.
+        name_files (str, optional): Nome dos arquivos que serão importados. Padrão é 'activity_*.parquet'.
+
+    Returns:
+        pd.DataFrame: Retorna um DataFrame com todos os dados importados
+    """
+    folder = folder
+    name_files = name_files
+    dataset = pd.DataFrame()
+
+    try:
+        for file in glob.glob(folder + name_files):
+            dataset = pd.concat([dataset, pd.read_parquet(file)], axis=0)
+    except Exception as e:
+        print(f'Error: {e}')
+    finally:
+        return dataset

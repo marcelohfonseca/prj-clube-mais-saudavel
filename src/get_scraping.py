@@ -136,7 +136,7 @@ class StravaScraper:
             'activity_id': activity_id,
             'athlete_name': 'Unnamed',
             'activity_type': 'Unnamed',
-            'time': None,
+            'date_time': None,
             'location': 'Unnamed',
             'activity_name': 'Unnamed',
             'moving_time': np.nan,
@@ -189,7 +189,7 @@ class StravaScraper:
             element = '//div[@class="details"]/time'
             if self.element_exists(element):
                 content = self.page.locator(element).text_content()
-                data['time'] = parse_datetime(content) if content else np.nan
+                data['date_time'] = parse_datetime(content) if content else np.nan
         except Exception as e:
             logger.error(
                 get_msg_log('activity', 'error', f'{athlete_id}: {activity_id} - {e}')

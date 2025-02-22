@@ -370,19 +370,39 @@ class StravaScraper:
             if self.element_exists(show_more_button):
                 self.page.locator(show_more_button).click()
 
-            calories = None
+            calories = np.nan
             for element in possible_elements:
                 if self.element_exists(element):
                     content = self.page.locator(element).text_content().strip()
                     if content:
-                        calories = content
+                        calories = content.replace(',', '.')
                         break
-                else:
-                    calories = np.nan
             data['calories'] = calories if calories else np.nan
         except Exception as e:
             logger.error(
                 get_msg_log('activity', 'error', f'{athlete_id}: {activity_id} - {e}')
             )
 
-        return pd.DataFrame([data])
+        dataset = pd.DataFrame([data])        
+        dataset.astype(
+            {
+                'athlete_id': 'int',
+                'activity_id': 'int',
+                'athlete_name': 'string',
+                'activity_type': 'category',
+                'date_time': 'datetime64[ns]',
+                'location': 'string',
+                'activity_name': 'string',
+                'moving_time': 'timedelta64[ns]',
+                'elapsed_time': 'timedelta64[ns]',
+                'duration': 'timedelta64[ns]',
+                'calories': 'float',
+                'distance': 'float',
+                'pace': 'string',
+                'elevation': 'float',
+                'link': 'string',
+                'updated_at': 'datetime64[ns]',
+            }
+        )
+
+        return dataset

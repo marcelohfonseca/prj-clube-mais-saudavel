@@ -36,7 +36,7 @@ try:
                 desc=f'Coletando dados de atividades de {athlete_id}',
                 leave=False,
             ):
-                activity_df = scraper.activity_df(athlete_id, activity_id)
+                activity_df = scraper.activity_data(athlete_id, activity_id)
                 all_activity_df = pd.concat([all_activity_df, activity_df])
 
         all_activity_df['week'] = all_activity_df['time'].dt.strftime('%Y%U')

@@ -136,6 +136,7 @@ class StravaScraper:
             'activity_id': activity_id,
             'athlete_name': 'Unnamed',
             'activity_type': 'Unnamed',
+            'date': None,
             'date_time': None,
             'location': 'Unnamed',
             'activity_name': 'Unnamed',
@@ -148,6 +149,7 @@ class StravaScraper:
             'elevation': np.nan,
             'link': f'{self.URL}/activities/{activity_id}',
             'updated_at': datetime.now(),
+            'week': None,
         }
 
         # nome do atleta
@@ -391,6 +393,7 @@ class StravaScraper:
                 'athlete_name': 'string',
                 'activity_type': 'category',
                 'date_time': 'datetime64[ns]',
+                'date': 'datetime64[ns]',
                 'location': 'string',
                 'activity_name': 'string',
                 'moving_time': 'timedelta64[ns]',
@@ -402,7 +405,10 @@ class StravaScraper:
                 'elevation': 'float',
                 'link': 'string',
                 'updated_at': 'datetime64[ns]',
+                'week': 'string',
             }
         )
+        dataset['date'] = dataset['date_time'].dt.date
+        dataset['week'] = dataset['date_time'].dt.strftime('%Y%U')
 
         return dataset

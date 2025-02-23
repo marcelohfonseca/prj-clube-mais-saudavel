@@ -386,7 +386,7 @@ class StravaScraper:
             )
 
         dataset = pd.DataFrame([data])        
-        dataset.astype(
+        dataset = dataset.astype(
             {
                 'athlete_id': 'int',
                 'activity_id': 'int',

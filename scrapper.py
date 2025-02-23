@@ -39,12 +39,9 @@ try:
                 activity_df = scraper.activity_data(athlete_id, activity_id)
                 all_activity_df = pd.concat([all_activity_df, activity_df])
 
-        all_activity_df['week'] = all_activity_df['date_time'].dt.strftime('%Y%U')
-
-        for week in tqdm(
-            all_activity_df['week'].unique(), desc='Salvando arquivos semanais'
-        ):
-            print(week)
+        weeks = all_activity_df['week'].unique()
+        
+        for week in tqdm(weeks, desc='Salvando arquivos semanais'):
             week_activity_df = all_activity_df[all_activity_df['week'] == week]
             week_activity_df.reset_index(drop=True, inplace=True)
             week_activity_df.to_parquet(PATH_TO_DATA + f'activity_week_{week}.parquet')

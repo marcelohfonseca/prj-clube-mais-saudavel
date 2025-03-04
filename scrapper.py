@@ -1,6 +1,6 @@
 import argparse
-import os
 import logging
+import os
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -37,17 +37,34 @@ def parse_arguments():
         description="Script de scraping e pontuação do Strava Club."
     )
     parser.add_argument(
-        "--score", action="store_true", help="Se passado, executa a pontuação."
+        "--club-id", type=int, required=True, help="ID do clube Strava."
     )
     parser.add_argument(
-        "--club-id", type=int, required=True, help="ID do clube Strava."
+        "--week",
+        type=int,
+        required=False,
+        help="Número de semanas para coletar atividades.",
+    )
+    parser.add_argument(
+        "--score", action="store_true", help="Se passado, executa a pontuação."
     )
 
     return parser.parse_args()
 
 
-def scrape_club_members(scraper, club_id):
-    """Coleta os membros do clube e salva os dados."""
+def scrape_club_members(scraper: object, club_id: int) -> list:
+    """Coleta membros do clube e retorna uma lista de IDs.
+
+    Args:
+        scraper (object): Objeto StravaScraper instanciado.
+        club_id (int): Código do clube Strava.
+
+    Raises:
+        ValueError: No caso de não encontrar nenhum atleta no clube.
+
+    Returns:
+        list: Lista de IDs dos atletas.
+    """
     logging.info(f"Coletando membros do clube {club_id}...")
 
     members_df = scraper.get_club_members(club_id)
@@ -62,14 +79,25 @@ def scrape_club_members(scraper, club_id):
     return members_list
 
 
-def scrape_athlete_activities(scraper, members_list):
-    """Coleta atividades dos atletas e retorna um DataFrame consolidado."""
+def scrape_athlete_activities(
+    scraper: object, members_list: list, weeks: int = 1
+) -> pd.DataFrame:
+    """Coleta atividades dos atletas e retorna um DataFrame.
+
+    Args:
+        scraper (object): Objeto StravaScraper instanciado.
+        members_list (list): Lista de IDs dos atletas.
+        weeks (int): Número de semanas para coletar atividades. Padrão é 1.
+
+    Returns:
+        pd.DataFrame: DataFrame com os dados das atividades.
+    """
     all_activity_dfs = []
 
     for athlete_id in tqdm(
         members_list, total=len(members_list), desc="Coletando atividades dos atletas"
     ):
-        activities = scraper.get_athlete_activities(athlete_id, weeks=2)
+        activities = scraper.get_athlete_activities(athlete_id, weeks=weeks)
 
         for activity_id in tqdm(
             activities["activities"],
@@ -84,7 +112,7 @@ def scrape_athlete_activities(scraper, members_list):
     return pd.DataFrame()
 
 
-def save_weekly_activity_data(all_activity_df):
+def save_weekly_activity_data(all_activity_df: pd.DataFrame):
     """Salva os dados de atividades organizados por semana."""
     weeks = all_activity_df["week"].unique()
 
@@ -114,7 +142,7 @@ def main():
 
     try:
         members_list = scrape_club_members(scraper, args.club_id)
-        all_activity_df = scrape_athlete_activities(scraper, members_list)
+        all_activity_df = scrape_athlete_activities(scraper, members_list, args.week)
 
         if not all_activity_df.empty:
             save_weekly_activity_data(all_activity_df)

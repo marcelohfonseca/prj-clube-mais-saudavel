@@ -78,13 +78,13 @@ pip install uv
 Instalar dependências do projeto:
 
 ```bash
-uv pip install -r requirements.txt
+uv pip install
 ```
 
 Se quiser instalar também as dependências de desenvolvimento:
 
 ```bash
-uv pip install -r requirements.txt --extra dev
+uv pip install .[dev]
 ```
 
 ### 🔹 Passo 3: Executar o Projeto

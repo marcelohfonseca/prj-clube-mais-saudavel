@@ -89,11 +89,18 @@ uv pip install .[dev]
 
 ### 🔹 Passo 3: Executar o Projeto
 
+Argumentos obrigatórios:
+- **--club-id:** ID do clube no Strava.
+- **--week:** Número de semanas a serem processadas.
+
+Argumentos opcionais:
+- **--score:** Calcula a pontuação de cada atleta.
+
 ```bash
-python scrapper.py
+python scrapper.py --club-id 12345 --week 2
 ```
 
-> **Observação:** Certifique-se de configurar suas variáveis de ambiente corretamente, se necessário.
+> **Observação:** Certifique-se de configurar suas variáveis de ambiente corretamente antes de executar o script. Consulte o arquivo `.env.example` para mais detalhes.
 
 ---
 

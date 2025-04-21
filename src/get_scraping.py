@@ -409,6 +409,8 @@ class StravaScraper:
             }
         )
         dataset['date'] = dataset['date_time'].dt.date
-        dataset['week'] = dataset['date_time'].dt.strftime('%Y%U')
+        dataset['week'] = dataset['date_time'].dt.isocalendar().year.astype(
+            str
+        ) + dataset['date_time'].dt.isocalendar().week.astype(str).str.zfill(2)
 
         return dataset
